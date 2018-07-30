@@ -10,80 +10,44 @@ import (
 	"github.com/astaxie/beego/orm"
 )
 
-type User struct {
-	Id       int64  `orm:"auto"`
-	Username string `orm:"size(128)"`
-	Email    string `orm:"size(128)"`
-	Projects []*Project `orm:"reverse(many)"`
-	PrjectUsers []*ProjectUser `orm:"reverse(many)"`
+type Project struct {
+	Id     int64  `orm:"auto"`
+	Name   string `orm:"size(128)"`
+	User *User `orm:"rel(fk);index"`
+	ProjectUsers []*ProjectUser `orm:"reverse(many)"`
 	CreatedAt time.Time `orm:"auto_now_add;type(datetime);"`
 	UpdatedAt time.Time `orm:"auto_now;type(datetime);"`
 }
 
-func (u *User) TableName() string {
-    return "users"
-}
-
-// UserSignup user signup with username and email
-type UserSignup struct {
-	Username string `orm:"size(128)"`
-	Email    string `orm:"size(128)"`
-}
-
 func init() {
-	orm.RegisterModel(new(User))
+	orm.RegisterModel(new(Project))
 }
 
-// AddUser insert a new User into database and returns
+// AddProject insert a new Project into database and returns
 // last inserted Id on success.
-func AddUser(m *User) (id int64, err error) {
+func AddProject(m *Project) (id int64, err error) {
 	o := orm.NewOrm()
 	id, err = o.Insert(m)
 	return
 }
 
-// SignUp signup user
-func SignUp(user *UserSignup) (int64, error) {
-	u, _ := GetUserByUsernameOrEmail(user.Username, user.Email)
-
-	if (u.Id > 0) {
-		return u.Id, errors.New("username or email is already exist")
-	}
-
-	return AddUser(&User{
-		Email: user.Email,
-		Username: user.Username,
-	})
-}
-
-// GetUserById retrieves User by Id. Returns error if
+// GetProjectById retrieves Project by Id. Returns error if
 // Id doesn't exist
-func GetUserById(id int64) (v *User, err error) {
+func GetProjectById(id int64) (v *Project, err error) {
 	o := orm.NewOrm()
-	v = &User{Id: id}
-	if err = o.QueryTable(new(User)).Filter("Id", id).RelatedSel().One(v); err == nil {
+	v = &Project{Id: id}
+	if err = o.QueryTable(new(Project)).Filter("Id", id).RelatedSel().One(v); err == nil {
 		return v, nil
 	}
 	return nil, err
 }
 
-// GetUserByUsernameOrEmail find user by username or email
-func GetUserByUsernameOrEmail(username string, email string) (user User, err error) {
-	o := orm.NewOrm()
-	cond := orm.NewCondition()
-	cond.And("username", username).Or("email", email)
-
-	err = o.QueryTable(new(User)).SetCond(cond).One(&user)
-
-	return user, err
-}
-
-// GetAllUser retrieves all User matches certain condition. Returns empty list if
+// GetAllProject retrieves all Project matches certain condition. Returns empty list if
 // no records exist
-func GetAllUser(query map[string]string, fields []string, sortby []string, order []string,
+func GetAllProject(query map[string]string, fields []string, sortby []string, order []string,
 	offset int64, limit int64) (ml []interface{}, err error) {
 	o := orm.NewOrm()
-	qs := o.QueryTable(new(User))
+	qs := o.QueryTable(new(Project))
 	// query k=v
 	for k, v := range query {
 		// rewrite dot-notation to Object__Attribute
@@ -129,7 +93,7 @@ func GetAllUser(query map[string]string, fields []string, sortby []string, order
 		}
 	}
 
-	var l []User
+	var l []Project
 	qs = qs.OrderBy(sortFields...).RelatedSel()
 	if _, err = qs.Limit(limit, offset).All(&l, fields...); err == nil {
 		if len(fields) == 0 {
@@ -152,11 +116,11 @@ func GetAllUser(query map[string]string, fields []string, sortby []string, order
 	return nil, err
 }
 
-// UpdateUser updates User by Id and returns error if
+// UpdateProject updates Project by Id and returns error if
 // the record to be updated doesn't exist
-func UpdateUserById(m *User) (err error) {
+func UpdateProjectById(m *Project) (err error) {
 	o := orm.NewOrm()
-	v := User{Id: m.Id}
+	v := Project{Id: m.Id}
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		var num int64
@@ -167,15 +131,15 @@ func UpdateUserById(m *User) (err error) {
 	return
 }
 
-// DeleteUser deletes User by Id and returns error if
+// DeleteProject deletes Project by Id and returns error if
 // the record to be deleted doesn't exist
-func DeleteUser(id int64) (err error) {
+func DeleteProject(id int64) (err error) {
 	o := orm.NewOrm()
-	v := User{Id: id}
+	v := Project{Id: id}
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		var num int64
-		if num, err = o.Delete(&User{Id: id}); err == nil {
+		if num, err = o.Delete(&Project{Id: id}); err == nil {
 			fmt.Println("Number of records deleted in database:", num)
 		}
 	}
