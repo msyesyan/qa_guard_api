@@ -24,10 +24,16 @@ func (u *User) TableName() string {
     return "users"
 }
 
-// UserSignup user signup with username and email
+// UserSignup with username and email
 type UserSignup struct {
-	Username string `orm:"size(128)"`
-	Email    string `orm:"size(128)"`
+	Username string
+	Email    string
+}
+
+// UserSignIn with email and password
+type UserSignIn struct {
+	Email string
+	Password string
 }
 
 func init() {

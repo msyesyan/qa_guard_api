@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"time"
+	"github.com/dgrijalva/jwt-go/request"
+	"github.com/dgrijalva/jwt-go"
 	"encoding/json"
 	"errors"
 	"qa_guard_api/models"
@@ -81,6 +84,45 @@ func (c *UserController) GetOne() {
 	} else {
 		c.Data["json"] = v
 	}
+	c.ServeJSON()
+}
+
+// GetCurrentUser
+// @Title Get current login in user
+// @Description Get current login in user
+// @Param	Authorization	header	string true	"jwt token"
+// @Sucess 200 {object} models.User
+// @Failure 401
+// @router /current
+func (c *UserController) GetCurrentUser() {
+	// jwt := c.Ctx.Request.Header.Get("Authorization")
+	jwtToken, err := request.HeaderExtractor{"Authorization"}.ExtractToken(c.Ctx.Request)
+
+	if err != nil {
+		c.Ctx.Output.SetStatus(401)
+		c.Data["json"] = "user not authenticated"
+	} else {
+		token := strings.TrimPrefix(jwtToken, "Bearer ")
+
+		var keyFunc = func(t *jwt.Token) (interface{}, error) {
+			return []byte("qa_guard_api"), nil
+		}
+		// var parser *jwt.Parser
+		// parser{UseJSONNumber: true}.ParseWithClaims(token, &jwt.StandardClaims{}, func() {	return []byte("qa_guard_api"), nil})
+		jwtT, err2 := (&jwt.Parser{UseJSONNumber: true}).ParseWithClaims(token, &jwt.StandardClaims{}, keyFunc)
+
+		if err2 != nil {
+			c.Data["json"] = err2.Error()
+		} else {
+			if claims, ok := jwtT.Claims.(*jwt.StandardClaims); ok && jwtT.Valid {
+				currentUser, _ := models.GetUserByUsernameOrEmail("", claims.Subject)
+				c.Data["json"] = currentUser
+			} else {
+				c.Data["json"] = "invalid jwt token"
+			}
+		}
+	}
+
 	c.ServeJSON()
 }
 
@@ -183,5 +225,42 @@ func (c *UserController) Delete() {
 	} else {
 		c.Data["json"] = err.Error()
 	}
+	c.ServeJSON()
+}
+
+// SignIn
+// @Title SignIn
+// @Description sign in with email and password
+// @Param	body	body	models.UserSignIn	true "body for user sign in"
+// @Sucess 200 json{ jwt }
+// @Failure 401 authenticate error
+// @router /sign_in [post]
+func (c *UserController) SignIn() {
+	var userSignIn models.UserSignIn
+	json.Unmarshal(c.Ctx.Input.RequestBody, &userSignIn)
+
+	// TODO get user by email
+	user, err := models.GetUserByUsernameOrEmail("", userSignIn.Email)
+
+	if err != nil {
+		c.Data["json"] = "user authenticate fail"
+		c.Ctx.Output.SetStatus(401)
+	}
+
+	// TODO validate password
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.StandardClaims{
+		Subject: user.Email,
+		ExpiresAt: time.Now().Add(time.Hour  * 24 * 7).Unix(),
+	})
+
+	ss, jwtErr := token.SignedString([]byte("qa_guard_api"))
+
+	if jwtErr != nil {
+		c.Data["json"] = jwtErr.Error()
+	} else {
+		c.Data["json"] = map[string]string{"jwt": ss}
+	}
+
 	c.ServeJSON()
 }
