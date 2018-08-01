@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/astaxie/beego/plugins/cors"
 	_ "github.com/lib/pq"
 	"github.com/astaxie/beego/orm"
 	_ "qa_guard_api/routers"
@@ -17,12 +18,19 @@ func init() {
 	}
 
 	orm.RunCommand()
+
+	if beego.AppConfig.String("runmode") == "dev" {
+		beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
+			AllowOrigins: []string{"http://localhost:*", "http://127.0.0.1:*"},
+			AllowCredentials: true,
+		}))
+
+		beego.BConfig.WebConfig.DirectoryIndex = true
+		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
+	}
 }
 
 func main() {
-	beego.BConfig.WebConfig.DirectoryIndex = true
-	beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
-
 	o := orm.NewOrm()
 	o.Using("default")
 
