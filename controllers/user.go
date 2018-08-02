@@ -95,34 +95,14 @@ func (c *UserController) GetOne() {
 // @Failure 401
 // @router /current
 func (c *UserController) GetCurrentUser() {
-	// jwt := c.Ctx.Request.Header.Get("Authorization")
-	jwtToken, err := request.HeaderExtractor{"Authorization"}.ExtractToken(c.Ctx.Request)
+	token, _ := request.HeaderExtractor{"Authorization"}.ExtractToken(c.Ctx.Request)
+	user, err := models.GetUserFromToken(token)
 
 	if err != nil {
-		c.Ctx.Output.SetStatus(401)
-		c.Data["json"] = "user not authenticated"
-	} else {
-		token := strings.TrimPrefix(jwtToken, "Bearer ")
-
-		var keyFunc = func(t *jwt.Token) (interface{}, error) {
-			return []byte("qa_guard_api"), nil
-		}
-		// var parser *jwt.Parser
-		// parser{UseJSONNumber: true}.ParseWithClaims(token, &jwt.StandardClaims{}, func() {	return []byte("qa_guard_api"), nil})
-		jwtT, err2 := (&jwt.Parser{UseJSONNumber: true}).ParseWithClaims(token, &jwt.StandardClaims{}, keyFunc)
-
-		if err2 != nil {
-			c.Data["json"] = err2.Error()
-		} else {
-			if claims, ok := jwtT.Claims.(*jwt.StandardClaims); ok && jwtT.Valid {
-				currentUser, _ := models.GetUserByUsernameOrEmail("", claims.Subject)
-				c.Data["json"] = currentUser
-			} else {
-				c.Data["json"] = "invalid jwt token"
-			}
-		}
+		c.Abort("401")
 	}
 
+	c.Data["json"] = user
 	c.ServeJSON()
 }
 

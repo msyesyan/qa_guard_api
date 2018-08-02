@@ -7,6 +7,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/astaxie/beego/context"
+	"strings"
 )
 
 func renderError(ctx *context.Context) {
@@ -19,7 +20,7 @@ func renderError(ctx *context.Context) {
 // AuthJwtToken check jwt
 func AuthJwtToken(ctx *context.Context) {
 	//TODO should be more strict
-	if shouldSkip, _ := regexp.MatchString("/sign_[in|up]", ctx.Input.URL()); shouldSkip {
+	if skipVerify, _ := regexp.MatchString("/sign_[in|up]", ctx.Input.URL()); skipVerify {
 		return
 	}
 
@@ -32,6 +33,8 @@ func AuthJwtToken(ctx *context.Context) {
 
 		renderError(ctx)
 	}
+
+	tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
 
 	var keyFunc = func(t *jwt.Token) (interface{}, error) {
 		return []byte("qa_guard_api"), nil

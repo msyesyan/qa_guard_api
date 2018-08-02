@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/dgrijalva/jwt-go"
 	"time"
 	"errors"
 	"fmt"
@@ -186,4 +187,29 @@ func DeleteUser(id int64) (err error) {
 		}
 	}
 	return
+}
+
+// GetUserFromToken get user from jwt token
+func GetUserFromToken(tokenStr string) (user User, err error) {
+	tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
+
+	var keyFunc = func(t *jwt.Token) (interface{}, error) {
+		return []byte("qa_guard_api"), nil
+	}
+
+	token, err := (&jwt.Parser{UseJSONNumber: true}).ParseWithClaims(tokenStr, &jwt.StandardClaims{}, keyFunc)
+
+	if (err != nil) {
+		return user, err
+	}
+
+	if claims, ok := token.Claims.(*jwt.StandardClaims); ok && token.Valid {
+		user, err := GetUserByUsernameOrEmail("", claims.Subject);
+		if err != nil {
+			return user, err
+		}
+		return user, nil
+	}
+
+	return user, errors.New("Not found")
 }
