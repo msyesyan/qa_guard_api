@@ -37,6 +37,7 @@ func GetProjectById(id int64) (v *Project, err error) {
 	o := orm.NewOrm()
 	v = &Project{Id: id}
 	if err = o.QueryTable(new(Project)).Filter("Id", id).RelatedSel().One(v); err == nil {
+		o.LoadRelated(v, "ProjectUsers")
 		return v, nil
 	}
 	return nil, err

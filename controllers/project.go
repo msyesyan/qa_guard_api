@@ -1,6 +1,10 @@
 package controllers
 
 import (
+	"strconv"
+	"encoding/json"
+	"github.com/dgrijalva/jwt-go/request"
+	"qa_guard_api/models"
 	"github.com/astaxie/beego"
 )
 
@@ -26,9 +30,24 @@ func (c *ProjectController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *ProjectController) Post() {
-	// currentUser
-	// project
-	// projectUser
+	token, _ := request.HeaderExtractor{"Authorization"}.ExtractToken(c.Ctx.Request)
+	user, err := models.GetUserFromToken(token)
+
+	var project models.Project
+	json.Unmarshal(c.Ctx.Input.RequestBody, &project)
+
+	result, err := models.AddUserProject(&user, &project)
+
+	if err != nil {
+		c.Ctx.Output.SetStatus(422)
+		c.Data["json"] = err.Error()
+		c.ServeJSON()
+		return
+	}
+
+	c.Ctx.Output.SetStatus(201)
+	c.Data["json"] = result
+	c.ServeJSON()
 }
 
 // GetOne ...
@@ -39,7 +58,20 @@ func (c *ProjectController) Post() {
 // @Failure 403 :id is empty
 // @router /:id [get]
 func (c *ProjectController) GetOne() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, _ := strconv.ParseInt(idStr, 0, 64)
 
+	result, err := models.GetProjectById(id)
+
+	if err != nil {
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = err.Error()
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = result
+	c.ServeJSON()
 }
 
 // GetAll ...

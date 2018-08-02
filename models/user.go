@@ -69,6 +69,7 @@ func GetUserById(id int64) (v *User, err error) {
 	o := orm.NewOrm()
 	v = &User{Id: id}
 	if err = o.QueryTable(new(User)).Filter("Id", id).RelatedSel().One(v); err == nil {
+		o.LoadRelated(v, "Projects")
 		return v, nil
 	}
 	return nil, err
@@ -81,6 +82,10 @@ func GetUserByUsernameOrEmail(username string, email string) (user User, err err
 	cond.And("username", username).Or("email", email)
 
 	err = o.QueryTable(new(User)).SetCond(cond).One(&user)
+
+	if err == nil {
+		o.LoadRelated(&user, "Projects")
+	}
 
 	return user, err
 }
@@ -199,12 +204,12 @@ func GetUserFromToken(tokenStr string) (user User, err error) {
 
 	token, err := (&jwt.Parser{UseJSONNumber: true}).ParseWithClaims(tokenStr, &jwt.StandardClaims{}, keyFunc)
 
-	if (err != nil) {
+	if err != nil {
 		return user, err
 	}
 
 	if claims, ok := token.Claims.(*jwt.StandardClaims); ok && token.Valid {
-		user, err := GetUserByUsernameOrEmail("", claims.Subject);
+		user, err := GetUserByUsernameOrEmail("", claims.Subject)
 		if err != nil {
 			return user, err
 		}
@@ -212,4 +217,38 @@ func GetUserFromToken(tokenStr string) (user User, err error) {
 	}
 
 	return user, errors.New("Not found")
+}
+
+// AddUserProject add a project to user
+func AddUserProject(user *User, project *Project) (result *Project, err error){
+	// TODO transaction
+	project.User = user
+
+	id, err := AddProject(project)
+
+	if err != nil {
+		return project, err
+	}
+
+	result, err = GetProjectById(id)
+
+	if err != nil {
+		return result, err
+	}
+
+	projectUser := &ProjectUser {
+		User: user,
+		Project: result,
+	}
+
+	_, err = AddProjectUser(projectUser)
+
+	if err != nil {
+		return result, err
+	}
+
+	o := orm.NewOrm()
+	o.LoadRelated(result, "ProjectUsers")
+
+	return result, err
 }
